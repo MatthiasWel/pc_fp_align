@@ -3,20 +3,7 @@ from typing import Callable
 import torch
 import torchmetrics
 from lightning import LightningDataModule, LightningModule
-from torch.utils.data import DataLoader, Dataset
-
-
-class SimpleDataset(Dataset):
-    def __init__(self, X, y):
-        self.X = torch.tensor(X, dtype=torch.float)
-        self.y = torch.tensor(y, dtype=torch.float)
-
-    def __len__(self):
-        return len(self.X)
-
-    def __getitem__(self, idx):
-        return self.X[idx], self.y[idx]
-
+from torch.utils.data import DataLoader
 
 class LitModel(LightningModule):
     def __init__(
