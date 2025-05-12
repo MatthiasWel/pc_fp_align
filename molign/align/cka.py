@@ -2,6 +2,9 @@ import torch
 
 
 def linear_cka(x, y):
+    assert (
+        x.shape[0] == y.shape[0]
+    ), f"The feature matrices must contain the same number of samples"
     n_samples = x.shape[0]
     centering_matrix = torch.eye(n_samples) - 1 / n_samples * torch.outer(
         torch.ones(n_samples), torch.ones(n_samples)

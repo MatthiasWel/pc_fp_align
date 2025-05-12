@@ -1,2 +1,2 @@
-from datasets.data_fetching import tdc_tasks
-from preprocess import clean
+from molign.datasets.data_fetching import tdc_tasks
+from molign.datasets.preprocess import clean

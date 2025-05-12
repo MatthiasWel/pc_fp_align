@@ -3,7 +3,9 @@ from torch.utils.data import Dataset
 
 
 class SimpleDataset(Dataset):
-    def __init__(self, X, y):
+    def __init__(self, X: torch.Tensor, y: torch.Tensor):
+        assert not torch.any(X.isnan()), "Features contain Nans"
+        assert not torch.any(X.isnan()), "Labels contain Nans"
         self.X = torch.tensor(X, dtype=torch.float)
         self.y = torch.tensor(y, dtype=torch.float)
 
