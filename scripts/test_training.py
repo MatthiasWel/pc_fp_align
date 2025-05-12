@@ -1,28 +1,27 @@
-import pandas as pd
-import tdc
-import tdc.single_pred
 import copy
-import torch
 
-from molign.utils.utils import DATA_PATH
-
-from rdkit.Chem import rdFingerprintGenerator
-from rdkit.ML.Descriptors.MoleculeDescriptors import MolecularDescriptorCalculator
-from rdkit.Chem import Descriptors
-from rdkit import RDLogger
-from chembl_structure_pipeline import standardize_mol
 import numpy as np
-from rdkit import Chem
-from ml_utils import BinaryClassificationMLP, train, SimpleDataset
-from sklearn.model_selection import train_test_split
-from molign.datasets import clean
-from molign.utils.utils import get_timestamp
-from molign.align import linear_cka
-from sklearn.preprocessing import StandardScaler
-from ml_utils import BASE_PATH
-from data_fetching import tdc_tasks
+import pandas as pd
+import torch
 import torchmetrics
-from molign.align.idcor import twoNN
+from datetime import datetime
+from chembl_structure_pipeline import standardize_mol
+
+from rdkit import Chem, RDLogger
+from rdkit.Chem import Descriptors, rdFingerprintGenerator
+from rdkit.ML.Descriptors.MoleculeDescriptors import MolecularDescriptorCalculator
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+from molign.align import linear_cka
+from molign.datasets import clean, tdc_tasks
+from molign.models import BinaryClassificationMLP, SimpleDataset, train
+
+
+from scripts.paths import BASE_PATH, DATA_PATH, TENSORBOARD_PATH
+
+def get_timestamp():
+    return datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
 
 def keep_non_nan(arr):
     if any(np.isnan(arr)):
@@ -30,91 +29,122 @@ def keep_non_nan(arr):
     return arr
 
 
-def process_data(data):                                                                                                                                                                                                                                   
-    RDLogger.DisableLog('rdApp.*')                                                                                                                                                                                                                        
-    mfpgen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)     
-    desc_list = [desc_name for desc_name, _ in Descriptors._descList if desc_name not in ('Ipc', 'BertzCT')]   
-    descgen = MolecularDescriptorCalculator(desc_list)                                                                                                                                                    
-    data['mol'] = data.smiles.apply(Chem.MolFromSmiles).apply(standardize_mol)                                                                                                                                                                            
-    data = data.assign(                                                                                                                                                                                                                                   
-        inchi=data.mol.apply(Chem.inchi.MolToInchi),                                                                                                                                                                                                      
+def process_data(data):
+    RDLogger.DisableLog("rdApp.*")
+    mfpgen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
+    desc_list = [
+        desc_name
+        for desc_name, _ in Descriptors._descList
+        if desc_name not in ("Ipc", "BertzCT")
+    ]
+    descgen = MolecularDescriptorCalculator(desc_list)
+    data["mol"] = data.smiles.apply(Chem.MolFromSmiles).apply(standardize_mol)
+    data = data.assign(
+        inchi=data.mol.apply(Chem.inchi.MolToInchi),
         FP=data.mol.apply(lambda mol: mfpgen.GetFingerprint(mol)).apply(np.array),
-        PC=data.mol.apply(lambda mol: descgen.CalcDescriptors(mol)).apply(np.array).apply(lambda x: keep_non_nan(x)),                                                                                                                                                           
+        PC=data.mol.apply(lambda mol: descgen.CalcDescriptors(mol))
+        .apply(np.array)
+        .apply(lambda x: keep_non_nan(x)),
     )
-    data = data[~data.PC.isna()]                
+    data = data[~data.PC.isna()]
     scaler = StandardScaler()
-    data['PC'] = list(scaler.fit_transform(np.stack(data['PC'])))   
-    data["PCFP"] = [np.concatenate([a, b]) for a, b in zip(data["PC"], data["FP"])]                                                                                                                                                                                                                                   
-    data = data.drop_duplicates(subset=['inchi']).reset_index(drop=True)                                                                                                                                                                                  
+    data["PC"] = list(scaler.fit_transform(np.stack(data["PC"])))
+    data["PCFP"] = [np.concatenate([a, b]) for a, b in zip(data["PC"], data["FP"])]
+    data = data.drop_duplicates(subset=["inchi"]).reset_index(drop=True)
     return data
+
 
 def main():
     timestamp = get_timestamp()
     data = tdc_tasks(6000)
     data = clean(data)
-    data.to_csv(BASE_PATH / f'data/data_{timestamp}.csv', index=False)
+    data.to_csv(DATA_PATH / f"data_{timestamp}.csv", index=False)
     results = {}
     aligns = {}
-    
-    full_processed = process_data(data.drop_duplicates(subset='smiles'))[['PC', 'FP', 'PCFP']]
-    
+
+    full_processed = process_data(data.drop_duplicates(subset="smiles"))[
+        ["PC", "FP", "PCFP"]
+    ]
+
     for task_id in data.task_id.unique():
-        print('\n\n\n\n', task_id, '\n\n\n\n')
+        print("\n\n\n\n", task_id, "\n\n\n\n")
         current_data = data[data.task_id == task_id]
         processed_data = process_data(current_data)
         train_data, test_data = train_test_split(processed_data, random_state=42)
-        for featurization_strategy, input_dim in [('PC', 206), ('FP', 2048), ('PCFP', 2048 + 206)]:
-            model = BinaryClassificationMLP(dict(decoder_input=input_dim, batch_norm=True, hidden_dimension=128))
-            X_train = torch.tensor(np.stack(train_data[featurization_strategy].to_list()), dtype=torch.float)
-            X_test  = torch.tensor(np.stack(test_data[featurization_strategy].to_list()), dtype=torch.float)
-            assert X_train.isnan().sum() == 0, f'There are nans in {task_id} in the training set'
-            assert X_test.isnan().sum() == 0, f'There are nans in {task_id} in the test set'
+        for featurization_strategy, input_dim in [
+            ("PC", 206),
+            ("FP", 2048),
+            ("PCFP", 2048 + 206),
+        ]:
+            model = BinaryClassificationMLP(
+                dict(decoder_input=input_dim, batch_norm=True, hidden_dimension=128)
+            )
+            X_train = torch.tensor(
+                np.stack(train_data[featurization_strategy].to_list()),
+                dtype=torch.float,
+            )
+            X_test = torch.tensor(
+                np.stack(test_data[featurization_strategy].to_list()), dtype=torch.float
+            )
+            assert (
+                X_train.isnan().sum() == 0
+            ), f"There are nans in {task_id} in the training set"
+            assert (
+                X_test.isnan().sum() == 0
+            ), f"There are nans in {task_id} in the test set"
 
             pred, true, res = train(
-                'test', 
-                timestamp, 
-                model, 
-                train=SimpleDataset(X_train, train_data.label.to_list()), 
+                "test",
+                timestamp,
+                model,
+                train=SimpleDataset(X_train, train_data.label.to_list()),
                 val=SimpleDataset(X_test, test_data.label.to_list()),
-                epochs=50
-                )
-            
-            if featurization_strategy == 'PC':
+                tensorboard_dir=TENSORBOARD_PATH,
+                epochs=50,
+            )
+
+            if featurization_strategy == "PC":
                 emb_pc = model.embedding(X_test)
                 emb_pc_full = model.embedding(
-                    torch.tensor(np.stack(full_processed['PC'].to_list()), dtype=torch.float)
+                    torch.tensor(
+                        np.stack(full_processed["PC"].to_list()), dtype=torch.float
+                    )
                 )
-                id_pc = twoNN(X_train)
-                id_emb_pc = twoNN(emb_pc)
                 pred_pc = copy.deepcopy(pred)
-                
-            if featurization_strategy == 'FP':
+
+            if featurization_strategy == "FP":
                 emb_fp = model.embedding(X_test)
                 emb_fp_full = model.embedding(
-                    torch.tensor(np.stack(full_processed['FP'].to_list()), dtype=torch.float)
+                    torch.tensor(
+                        np.stack(full_processed["FP"].to_list()), dtype=torch.float
+                    )
                 )
-                id_fp = twoNN(X_train)
-                id_emb_fp = twoNN(emb_fp)
                 pred_fp = copy.deepcopy(pred)
 
-            if featurization_strategy == 'PCFP':
+            if featurization_strategy == "PCFP":
                 emb_pcfp = model.embedding(X_test)
                 emb_pcfp_full = model.embedding(
-                    torch.tensor(np.stack(full_processed['PCFP'].to_list()), dtype=torch.float)
+                    torch.tensor(
+                        np.stack(full_processed["PCFP"].to_list()), dtype=torch.float
+                    )
                 )
-                id_pcfp = twoNN(X_train)
-                id_emb_pcfp = twoNN(emb_pcfp)
 
                 metrics = {
-                    'accuracy': torchmetrics.Accuracy('binary').to('cpu'), 
-                    'mcc': torchmetrics.MatthewsCorrCoef('binary').to('cpu')
+                    "accuracy": torchmetrics.Accuracy("binary").to("cpu"),
+                    "mcc": torchmetrics.MatthewsCorrCoef("binary").to("cpu"),
                 }
 
                 pred_mean = torch.mean(torch.stack([pred_pc, pred_fp]), dim=0)
                 pred_max = torch.max(torch.stack([pred_pc, pred_fp]), dim=0).values
 
-                results[(task_id, 'MEAN')] = {metric_name: metric(pred_mean, true) for metric_name, metric in metrics.items()}
-                results[(task_id, 'MAX')] =  {metric_name: metric(pred_max,  true) for metric_name, metric in metrics.items()}
+                results[(task_id, "MEAN")] = {
+                    metric_name: metric(pred_mean, true)
+                    for metric_name, metric in metrics.items()
+                }
+                results[(task_id, "MAX")] = {
+                    metric_name: metric(pred_max, true)
+                    for metric_name, metric in metrics.items()
+                }
 
                 alignment_pc_fp = linear_cka(emb_pc, emb_fp)
                 full_alignment_pc_fp = linear_cka(emb_pc_full, emb_fp_full)
@@ -126,52 +156,44 @@ def main():
                 full_alignment_fp_pcfp = linear_cka(emb_fp_full, emb_pcfp_full)
 
                 aligns[task_id] = {
-                    'alignment_pc_fp': float(alignment_pc_fp),
-                    'full_alignment_pc_fp': float(full_alignment_pc_fp), 
-
-                    'alignment_pc_pcfp': float(alignment_pc_pcfp),
-                    'full_alignment_pc_pcfp': float(full_alignment_pc_pcfp), 
-
-                    'alignment_fp_pcfp': float(alignment_fp_pcfp),
-                    'full_alignment_fp_pcfp': float(full_alignment_fp_pcfp), 
-
-                    'train_set_size': len(X_train), 
-                    'test_set_size': len(X_test), 
-                    'train_set_balance': np.mean(train_data.label.to_list()), 
-                    'test_set_balance': np.mean(test_data.label.to_list()),
-
-                    'id_pc': float(id_pc),
-                    'id_fp': float(id_fp),
-                    'id_pcfp': float(id_pcfp),
-                    'id_emb_pc': float(id_emb_pc),
-                    'id_emb_fp': float(id_emb_fp),
-                    'id_emb_pcfp': float(id_emb_pcfp)
-                    }
-                
+                    "alignment_pc_fp": float(alignment_pc_fp),
+                    "full_alignment_pc_fp": float(full_alignment_pc_fp),
+                    "alignment_pc_pcfp": float(alignment_pc_pcfp),
+                    "full_alignment_pc_pcfp": float(full_alignment_pc_pcfp),
+                    "alignment_fp_pcfp": float(alignment_fp_pcfp),
+                    "full_alignment_fp_pcfp": float(full_alignment_fp_pcfp),
+                    "train_set_size": len(X_train),
+                    "test_set_size": len(X_test),
+                    "train_set_balance": np.mean(train_data.label.to_list()),
+                    "test_set_balance": np.mean(test_data.label.to_list()),
+                }
 
             results[(task_id, featurization_strategy)] = res
-       
-    performance = pd.DataFrame.from_dict(results, orient='index').reset_index()
-    performance.columns = ['dataset', 'feature_type', 'accuracy', 'mcc']
+
+    performance = pd.DataFrame.from_dict(results, orient="index").reset_index()
+    performance.columns = ["dataset", "feature_type", "accuracy", "mcc"]
     performance.accuracy = performance.accuracy.astype(float)
     performance.mcc = performance.mcc.astype(float)
 
-    alignments = pd.DataFrame.from_dict(aligns, orient='index').reset_index()
+    alignments = pd.DataFrame.from_dict(aligns, orient="index").reset_index()
     alignments.columns = [
-        'dataset', 
-        'alignment_pc_fp',   'full_alignment_pc_fp', 
-        'alignment_pc_pcfp', 'full_alignment_pc_pcfp',
-        'alignment_fp_pcfp', 'full_alignment_fp_pcfp',
-        'train_set_size',    'test_set_size',
-        'train_set_balance', 'test_set_balance',
-        'id_pc', 'id_fp', 'id_pcfp', 
-        'id_emb_pc', 'id_emb_fp','id_emb_pcfp'
-        ]
+        "dataset",
+        "alignment_pc_fp",
+        "full_alignment_pc_fp",
+        "alignment_pc_pcfp",
+        "full_alignment_pc_pcfp",
+        "alignment_fp_pcfp",
+        "full_alignment_fp_pcfp",
+        "train_set_size",
+        "test_set_size",
+        "train_set_balance",
+        "test_set_balance",
+    ]
 
     df = performance.merge(alignments)
     print(df)
-    df.to_csv(BASE_PATH / f'results/performance_{timestamp}.csv',index=False)
-       
+    df.to_csv(BASE_PATH / f"results/performance_{timestamp}.csv", index=False)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
