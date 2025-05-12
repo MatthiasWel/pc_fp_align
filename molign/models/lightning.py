@@ -5,6 +5,7 @@ import torchmetrics
 from lightning import LightningDataModule, LightningModule
 from torch.utils.data import DataLoader
 
+
 class LitModel(LightningModule):
     def __init__(
         self,

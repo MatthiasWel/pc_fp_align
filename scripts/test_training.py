@@ -1,12 +1,11 @@
 import copy
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
 import torch
 import torchmetrics
-from datetime import datetime
 from chembl_structure_pipeline import standardize_mol
-
 from rdkit import Chem, RDLogger
 from rdkit.Chem import Descriptors, rdFingerprintGenerator
 from rdkit.ML.Descriptors.MoleculeDescriptors import MolecularDescriptorCalculator
@@ -16,12 +15,12 @@ from sklearn.preprocessing import StandardScaler
 from molign.align import linear_cka
 from molign.datasets import clean, tdc_tasks
 from molign.models import BinaryClassificationMLP, SimpleDataset, train
-
-
 from scripts.paths import BASE_PATH, DATA_PATH, TENSORBOARD_PATH
+
 
 def get_timestamp():
     return datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+
 
 def keep_non_nan(arr):
     if any(np.isnan(arr)):

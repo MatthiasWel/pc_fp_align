@@ -1,7 +1,8 @@
 import pandas as pd
 import tdc.single_pred
-from molign.utils.utils import DATA_PATH
 from tdc.utils import retrieve_label_name_list
+
+from molign.utils.utils import DATA_PATH
 
 
 def tdc_adme(sample_size):
