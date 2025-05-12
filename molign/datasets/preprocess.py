@@ -1,6 +1,7 @@
 import pandas as pd
 from chembl_structure_pipeline import standardize_mol
 from rdkit import Chem
+from rdkit import RDLogger
 from rdkit.Chem import Descriptors
 from rdkit.Chem.SaltRemover import SaltRemover
 
@@ -15,6 +16,7 @@ def standardize_mol_safe(mol):
 
 
 def clean(data: pd.DataFrame):
+    RDLogger.DisableLog('rdApp.*')
     data = data[~data.smiles.isna()]
     data = data[data.smiles.map(Chem.MolFromSmiles).map(bool)]
     data = data[~data.smiles.isna()]

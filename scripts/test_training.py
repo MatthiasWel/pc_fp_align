@@ -65,7 +65,7 @@ def process_data(data):
 
 def main():
     timestamp = get_timestamp()
-    data = tdc_tasks(DATASET_PATH, 6000)
+    data = tdc_tasks(DATASET_PATH, 10)
     data = clean(data)
     data.to_csv(DATA_PATH / f"data_{timestamp}.csv", index=False)
     results = {}
@@ -108,7 +108,7 @@ def main():
                 model,
                 train=SimpleDataset(X_train, train_data.label.to_list()),
                 val=SimpleDataset(X_test, test_data.label.to_list()),
-                tensorboard_dir=TENSORBOARD_PATH,
+                tensorboard_path=TENSORBOARD_PATH,
                 epochs=50,
             )
 
