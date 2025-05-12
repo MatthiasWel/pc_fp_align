@@ -5,6 +5,7 @@ import torchmetrics
 from lightning import LightningDataModule, LightningModule
 from torch.utils.data import DataLoader
 
+from molign.models.metrics import metrics_on_device 
 
 class LitModel(LightningModule):
     def __init__(
@@ -29,10 +30,7 @@ class LitModel(LightningModule):
         self.loss_function = loss_function
         self.unwrap_data = unwrap_data
 
-        self.metrics = {
-            "accuracy": torchmetrics.Accuracy("binary").to(self.device),
-            "mcc": torchmetrics.MatthewsCorrCoef("binary").to(self.device),
-        }
+        self.metrics = metrics_on_device(self.device)
 
     def forward(self, x):
         return self.model(x)

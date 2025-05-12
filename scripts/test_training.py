@@ -17,6 +17,7 @@ from sklearn.preprocessing import StandardScaler
 from molign.align import linear_cka
 from molign.datasets import clean, tdc_tasks
 from molign.models import BinaryClassificationMLP, SimpleDataset, train
+from molign.models.metrics import metrics_on_device
 
 BASE_PATH = Path("/data/shared/exchange/mwelsch/fp_pc_align")
 DATASET_PATH = BASE_PATH / "datasets"
@@ -65,7 +66,7 @@ def process_data(data):
 
 def main():
     timestamp = get_timestamp()
-    data = tdc_tasks(DATASET_PATH, 10)
+    data = tdc_tasks(DATASET_PATH, 6000, include=("adme", "hts", "tox", "tox21"))
     data = clean(data)
     data.to_csv(DATA_PATH / f"data_{timestamp}.csv", index=False)
     results = {}
@@ -81,12 +82,12 @@ def main():
         processed_data = process_data(current_data)
         train_data, test_data = train_test_split(processed_data, random_state=42)
         for featurization_strategy, input_dim in [
-            ("PC", 206),
+            ("PC", 215),
             ("FP", 2048),
-            ("PCFP", 2048 + 206),
+            ("PCFP", 2048 + 215),
         ]:
             model = BinaryClassificationMLP(
-                dict(decoder_input=input_dim, batch_norm=True, hidden_dimension=128)
+                dict(decoder_input=input_dim, batch_norm=True, hidden_dimension=128, num_linear_layers=3)
             )
             X_train = torch.tensor(
                 np.stack(train_data[featurization_strategy].to_list()),
@@ -109,7 +110,7 @@ def main():
                 train=SimpleDataset(X_train, train_data.label.to_list()),
                 val=SimpleDataset(X_test, test_data.label.to_list()),
                 tensorboard_path=TENSORBOARD_PATH,
-                epochs=50,
+                epochs=30,
             )
 
             if featurization_strategy == "PC":
@@ -138,10 +139,7 @@ def main():
                     )
                 )
 
-                metrics = {
-                    "accuracy": torchmetrics.Accuracy("binary").to("cpu"),
-                    "mcc": torchmetrics.MatthewsCorrCoef("binary").to("cpu"),
-                }
+                metrics = metrics_on_device('cpu')
 
                 pred_mean = torch.mean(torch.stack([pred_pc, pred_fp]), dim=0)
                 pred_max = torch.max(torch.stack([pred_pc, pred_fp]), dim=0).values
@@ -180,9 +178,10 @@ def main():
             results[(task_id, featurization_strategy)] = res
 
     performance = pd.DataFrame.from_dict(results, orient="index").reset_index()
-    performance.columns = ["dataset", "feature_type", "accuracy", "mcc"]
+    performance.columns = ["dataset", "feature_type", "accuracy", "mcc", 'ece']
     performance.accuracy = performance.accuracy.astype(float)
     performance.mcc = performance.mcc.astype(float)
+    performance.ece = performance.ece.astype(float)
 
     alignments = pd.DataFrame.from_dict(aligns, orient="index").reset_index()
     alignments.columns = [
