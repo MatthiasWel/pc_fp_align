@@ -2,10 +2,8 @@ import pandas as pd
 import tdc.single_pred
 from tdc.utils import retrieve_label_name_list
 
-from molign.utils.utils import DATA_PATH
 
-
-def tdc_adme(sample_size):
+def tdc_adme(dataset_path, sample_size):
     adme = [
         "PAMPA_NCATS",
         "HIA_Hou",
@@ -23,7 +21,9 @@ def tdc_adme(sample_size):
     ]
     all_adme = pd.DataFrame()
     for dataset in adme:
-        data = tdc.single_pred.ADME(name=dataset, path=DATA_PATH / "tdc_cyp").balanced()
+        data = tdc.single_pred.ADME(
+            name=dataset, path=dataset_path / "tdc_cyp"
+        ).balanced()
         data["task_id"] = dataset + "_adme"
         data = data[["task_id", "Drug", "Y"]]
         n_samples_task = min(sample_size, len(data))
@@ -35,10 +35,12 @@ def tdc_adme(sample_size):
     return all_adme
 
 
-def tdc_hts(sample_size):
+def tdc_hts(dataset_path, sample_size):
     all_hts = pd.DataFrame()
     for dataset in tdc.metadata.hts_dataset_names:
-        data = tdc.single_pred.HTS(name=dataset, path=DATA_PATH / "tdc_cyp").balanced()
+        data = tdc.single_pred.HTS(
+            name=dataset, path=dataset_path / "tdc_cyp"
+        ).balanced()
         data["task_id"] = dataset + "_hts"
         data = data[["task_id", "Drug", "Y"]]
         n_samples_task = min(sample_size, len(data))
@@ -50,7 +52,7 @@ def tdc_hts(sample_size):
     return all_hts
 
 
-def tdc_tox(sample_size):
+def tdc_tox(dataset_path, sample_size):
     all_tox = pd.DataFrame()
     for dataset in [
         "DILI",
@@ -62,7 +64,9 @@ def tdc_tox(sample_size):
         "Skin Reaction",
         "Carcinogens_Lagunin",
     ]:
-        data = tdc.single_pred.Tox(name=dataset, path=DATA_PATH / "tdc_cyp").balanced()
+        data = tdc.single_pred.Tox(
+            name=dataset, path=dataset_path / "tdc_cyp"
+        ).balanced()
         data["task_id"] = dataset + "_tox"
         data = data[["task_id", "Drug", "Y"]]
         n_samples_task = min(sample_size, len(data))
@@ -74,12 +78,12 @@ def tdc_tox(sample_size):
     return all_tox
 
 
-def tdc_tox21(sample_size):
+def tdc_tox21(dataset_path, sample_size):
     all_tox = pd.DataFrame()
     label_list = retrieve_label_name_list("Tox21")
     for dataset in label_list:
         data = tdc.single_pred.Tox(
-            name="Tox21", path=DATA_PATH / "tdc_cyp", label_name=dataset
+            name="Tox21", path=dataset_path / "tdc_cyp", label_name=dataset
         ).balanced()
         data["task_id"] = dataset + "_Tox21"
         data = data[["task_id", "Drug", "Y"]]
@@ -92,12 +96,12 @@ def tdc_tox21(sample_size):
     return all_tox
 
 
-def tdc_toxcast(sample_size):
+def tdc_toxcast(dataset_path, sample_size):
     all_tox = pd.DataFrame()
     label_list = retrieve_label_name_list("ToxCast")
     for dataset in label_list:
         data = tdc.single_pred.Tox(
-            name="ToxCast", path=DATA_PATH / "tdc_cyp", label_name=dataset
+            name="ToxCast", path=dataset_path / "tdc_cyp", label_name=dataset
         ).balanced()
         data["task_id"] = dataset + "_ToxCast"
         data = data[["task_id", "Drug", "Y"]]
@@ -110,11 +114,11 @@ def tdc_toxcast(sample_size):
     return all_tox
 
 
-def tdc_herg_central(sample_size):
+def tdc_herg_central(dataset_path, sample_size):
     all_tox = pd.DataFrame()
     for dataset in ["hERG_inhib"]:
         data = tdc.single_pred.Tox(
-            name="herg_central", path=DATA_PATH / "tdc_cyp", label_name=dataset
+            name="herg_central", path=dataset_path / "tdc_cyp", label_name=dataset
         ).balanced()
         data["task_id"] = dataset + "_herg_central"
         data = data[["task_id", "Drug", "Y"]]
@@ -128,27 +132,38 @@ def tdc_herg_central(sample_size):
 
 
 def tdc_tasks(
-    sample_size, include=("adme", "hts", "tox", "tox21", "tox_cast", "herg_central")
+    dataset_path,
+    sample_size,
+    include=("adme", "hts", "tox", "tox21", "tox_cast", "herg_central"),
 ):
     dataset_collections = []
+    for i in include:
+        assert i in (
+            "adme",
+            "hts",
+            "tox",
+            "tox21",
+            "tox_cast",
+            "herg_central",
+        ), f"{i} is not an available dataset collection"
 
     if "adme" in include:
-        adme = tdc_adme(sample_size)
+        adme = tdc_adme(dataset_path, sample_size)
         dataset_collections.append(adme)
     if "hts" in include:
-        hts = tdc_hts(sample_size)
+        hts = tdc_hts(dataset_path, sample_size)
         dataset_collections.append(hts)
     if "tox" in include:
-        tox = tdc_tox(sample_size)
+        tox = tdc_tox(dataset_path, sample_size)
         dataset_collections.append(tox)
     if "tox21" in include:
-        tox21 = tdc_tox21(sample_size)
+        tox21 = tdc_tox21(dataset_path, sample_size)
         dataset_collections.append(tox21)
     if "tox_cast" in include:
-        tox_cast = tdc_toxcast(sample_size)
+        tox_cast = tdc_toxcast(dataset_path, sample_size)
         dataset_collections.append(tox_cast)
     if "herg_central" in include:
-        herg_central = tdc_herg_central(sample_size)
+        herg_central = tdc_herg_central(dataset_path, sample_size)
         dataset_collections.append(herg_central)
 
     return pd.concat(dataset_collections).reset_index(drop=True)
