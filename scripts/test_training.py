@@ -6,7 +6,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
-import torchmetrics
 from chembl_structure_pipeline import standardize_mol
 from rdkit import Chem, RDLogger
 from rdkit.Chem import Descriptors, rdFingerprintGenerator
@@ -87,7 +86,12 @@ def main():
             ("PCFP", 2048 + 215),
         ]:
             model = BinaryClassificationMLP(
-                dict(decoder_input=input_dim, batch_norm=True, hidden_dimension=128, num_linear_layers=3)
+                dict(
+                    decoder_input=input_dim,
+                    batch_norm=True,
+                    hidden_dimension=128,
+                    num_linear_layers=3,
+                )
             )
             X_train = torch.tensor(
                 np.stack(train_data[featurization_strategy].to_list()),
@@ -139,7 +143,7 @@ def main():
                     )
                 )
 
-                metrics = metrics_on_device('cpu')
+                metrics = metrics_on_device("cpu")
 
                 pred_mean = torch.mean(torch.stack([pred_pc, pred_fp]), dim=0)
                 pred_max = torch.max(torch.stack([pred_pc, pred_fp]), dim=0).values
@@ -178,7 +182,7 @@ def main():
             results[(task_id, featurization_strategy)] = res
 
     performance = pd.DataFrame.from_dict(results, orient="index").reset_index()
-    performance.columns = ["dataset", "feature_type", "accuracy", "mcc", 'ece']
+    performance.columns = ["dataset", "feature_type", "accuracy", "mcc", "ece"]
     performance.accuracy = performance.accuracy.astype(float)
     performance.mcc = performance.mcc.astype(float)
     performance.ece = performance.ece.astype(float)

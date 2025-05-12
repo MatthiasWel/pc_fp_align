@@ -1,11 +1,11 @@
 from typing import Callable
 
 import torch
-import torchmetrics
 from lightning import LightningDataModule, LightningModule
 from torch.utils.data import DataLoader
 
-from molign.models.metrics import metrics_on_device 
+from molign.models.metrics import metrics_on_device
+
 
 class LitModel(LightningModule):
     def __init__(
