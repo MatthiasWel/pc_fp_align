@@ -1,8 +1,9 @@
+from typing import Callable
+
 import torch
 import torchmetrics
-from typing import Callable
-from lightning import LightningModule, LightningDataModule
-from torch.utils.data import Dataset, DataLoader
+from lightning import LightningDataModule, LightningModule
+from torch.utils.data import DataLoader, Dataset
 
 
 class SimpleDataset(Dataset):
@@ -15,7 +16,8 @@ class SimpleDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.X[idx], self.y[idx]
-    
+
+
 class LitModel(LightningModule):
     def __init__(
         self,
@@ -40,8 +42,8 @@ class LitModel(LightningModule):
         self.unwrap_data = unwrap_data
 
         self.metrics = {
-            'accuracy': torchmetrics.Accuracy('binary').to(self.device), 
-            'mcc': torchmetrics.MatthewsCorrCoef('binary').to(self.device)
+            "accuracy": torchmetrics.Accuracy("binary").to(self.device),
+            "mcc": torchmetrics.MatthewsCorrCoef("binary").to(self.device),
         }
 
     def forward(self, x):
@@ -53,7 +55,7 @@ class LitModel(LightningModule):
     def _common_step(self, data):
         x, y = self.unwrap_data(data)
         pred = self.model(x).flatten()
-        assert pred.isnan().sum() == 0, 'There are nans'
+        assert pred.isnan().sum() == 0, "There are nans"
         return self.loss_function(pred, y)
 
     def training_step(self, data):
@@ -73,7 +75,7 @@ class LitModel(LightningModule):
     def predict_step(self, data):
         x, y = self.unwrap_data(data)
         return self.model(x).flatten()
-    
+
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
             self.parameters(), lr=self.lr, weight_decay=self.weight_decay
