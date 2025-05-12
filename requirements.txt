@@ -1,0 +1,16 @@
+--extra-index-url https://download.pytorch.org/whl/cu126
+black==25.1.0
+chembl_structure_pipeline==1.2.2
+ipywidgets==8.1.5
+lightning==2.5.0
+mypy==1.15.0
+numpy==1.26.4
+pandas==1.5.3
+pre-commit==4.1.0
+PyTDC==0.4.1
+pytest==8.3.5
+rdkit==2024.09.6
+scikit-learn==1.6.1
+seaborn==0.13.2
+tensorboard==2.19.0
+torch==2.6.0+cu126

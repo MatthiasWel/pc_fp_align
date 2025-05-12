@@ -1,0 +1,16 @@
+[project]
+name = "molign"
+version = "1.0"
+readme = "README.md"
+maintainers = [
+    {name = "Matthias Welsch", email="matthias.welsch@univie.ac.at"},
+    {name = "Ellena Jiang", email="ellena.jiang@univie.ac.at"}
+]
+
+[tool.setuptools.packages.find]
+exclude = ["data", "notebooks", "scripts"]
+
+[tool.black]
+line-length = 88
+target-version = ['py37']
+include = '\.pyi?$'
