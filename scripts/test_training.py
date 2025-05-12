@@ -1,5 +1,7 @@
 import copy
+import os
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -15,7 +17,15 @@ from sklearn.preprocessing import StandardScaler
 from molign.align import linear_cka
 from molign.datasets import clean, tdc_tasks
 from molign.models import BinaryClassificationMLP, SimpleDataset, train
-from scripts.paths import BASE_PATH, DATA_PATH, TENSORBOARD_PATH
+
+BASE_PATH = Path("/data/shared/exchange/mwelsch/fp_pc_align")
+DATASET_PATH = BASE_PATH / "datasets"
+DATA_PATH = BASE_PATH / "data"
+RESULTS_PATH = BASE_PATH / "results"
+TENSORBOARD_PATH = BASE_PATH / "tensorboard"
+
+for p in [BASE_PATH, DATASET_PATH, DATA_PATH, RESULTS_PATH, TENSORBOARD_PATH]:
+    assert os.path.exists(p), f"{p} does not exist. Please create it."
 
 
 def get_timestamp():
@@ -55,7 +65,7 @@ def process_data(data):
 
 def main():
     timestamp = get_timestamp()
-    data = tdc_tasks(6000)
+    data = tdc_tasks(DATASET_PATH, 6000)
     data = clean(data)
     data.to_csv(DATA_PATH / f"data_{timestamp}.csv", index=False)
     results = {}
