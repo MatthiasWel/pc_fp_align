@@ -65,7 +65,7 @@ def process_data(data):
 
 def main():
     timestamp = get_timestamp()
-    data = tdc_tasks(DATASET_PATH, 6000, include=("adme", "hts", "tox", "tox21"))
+    data = tdc_tasks(DATASET_PATH, 6000, include=("tox_cast", "herg_central"))
     data = clean(data)
     data.to_csv(DATA_PATH / f"data_{timestamp}.csv", index=False)
     results = {}
