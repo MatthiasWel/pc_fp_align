@@ -122,7 +122,7 @@ def plot(df):
     cluster_sizes = np.array([np.sum(clusters == i) for i in range(1, n_clusters + 1)])
     print(max(cluster_sizes))
 
-    x_ticks, y_ticks = get_all_ticks(
+    x_ticks, y_ticks, x_min, x_max, y_min, y_max, delta_x, delta_y = get_all_ticks(
         np.arange(0, 1, 0.01) * 100, np.arange(0, 1, 0.01) * 100, n_spaces
     )
     x_ticks = [np.ceil(tick) for tick in x_ticks]
@@ -170,20 +170,11 @@ if __name__ == "__main__":
     df = pd.concat(
         [
             pd.read_csv(
-                "/data/shared/exchange/mwelsch/fp_pc_align/results/performance_2025-04-22_15:25:54.csv"
-            ),  # adme
+                "/data/shared/exchange/mwelsch/fp_pc_align/results/performance_2025-05-12_15:00:13.csv"
+            ),  # adme / hts / tox / tox21
             pd.read_csv(
-                "/data/shared/exchange/mwelsch/fp_pc_align/results/performance_2025-04-23_10:56:29.csv"
-            ),  # hts
-            pd.read_csv(
-                "/data/shared/exchange/mwelsch/fp_pc_align/results/performance_2025-04-23_11:49:40.csv"
-            ),  # tox
-            pd.read_csv(
-                "/data/shared/exchange/mwelsch/fp_pc_align/results/performance_2025-04-23_15:24:44.csv"
-            ),  # tox21
-            pd.read_csv(
-                "/data/shared/exchange/mwelsch/fp_pc_align/results/performance_2025-04-25_12:01:46.csv"
-            ),  # toxcast
+                "/data/shared/exchange/mwelsch/fp_pc_align/results/performance_2025-05-12_17:25:45.csv"
+            ),  # toxcast / herg
         ]
     ).reset_index(drop=True)
     plot(df)

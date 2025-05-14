@@ -71,7 +71,7 @@ def plot(df):
         .merge(meani, on=["dataset", alignment_measure], suffixes=("", "_MEAN"))
         .merge(maxi, on=["dataset", alignment_measure], suffixes=("", "_MAX"))
     )
-    full_aggregate = full_aggregate.rename({"mcc": "mcc_PCFP"})
+    full_aggregate = full_aggregate.rename({"mcc": "mcc_PCFP"}, axis=1)
     test_full_aggregate = full_aggregate
     x = test_full_aggregate[alignment_measure].values
     order = np.argsort(x)
@@ -139,7 +139,7 @@ def plot(df):
         alignment_cropped = x
         n_data = len(means)
         for bootstrap in range(1000):
-            samples = np.random.choice(range(n_data), size=10, replace=True)
+            samples = np.random.choice(range(n_data), size=100, replace=True)
             x_boot = alignment_cropped[samples]
             y_boot = means[samples]
             slope, intercept, r_value, p_value, std_err = linregress(x_boot, y_boot)
@@ -199,20 +199,11 @@ if __name__ == "__main__":
     df = pd.concat(
         [
             pd.read_csv(
-                "/data/shared/exchange/mwelsch/fp_pc_align/results/performance_2025-04-22_15:25:54.csv"
-            ),  # adme
+                "/data/shared/exchange/mwelsch/fp_pc_align/results/performance_2025-05-12_15:00:13.csv"
+            ),  # adme / hts / tox / tox21,
             pd.read_csv(
-                "/data/shared/exchange/mwelsch/fp_pc_align/results/performance_2025-04-23_10:56:29.csv"
-            ),  # hts
-            pd.read_csv(
-                "/data/shared/exchange/mwelsch/fp_pc_align/results/performance_2025-04-23_11:49:40.csv"
-            ),  # tox
-            pd.read_csv(
-                "/data/shared/exchange/mwelsch/fp_pc_align/results/performance_2025-04-23_15:24:44.csv"
-            ),  # tox21
-            pd.read_csv(
-                "/data/shared/exchange/mwelsch/fp_pc_align/results/performance_2025-04-25_12:01:46.csv"
-            ),  # toxcast
+                "/data/shared/exchange/mwelsch/fp_pc_align/results/performance_2025-05-12_17:25:45.csv"
+            ),  # toxcast / herg
         ]
     ).reset_index(drop=True)
     plot(df)

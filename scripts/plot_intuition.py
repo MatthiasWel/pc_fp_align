@@ -24,7 +24,7 @@ def main():
             "x": np.concatenate([x, x]),
             "y": np.concatenate([y1, y2]),
             "type": np.concatenate(
-                [["single" for i in range(len(x))], ["ensemble" for i in range(len(x))]]
+                [["ensemble" for i in range(len(x))], ["single" for i in range(len(x))]]
             ),
         },
         "index",
@@ -43,14 +43,13 @@ def main():
             "x": np.concatenate([norm2, norm3]),
             "type": np.concatenate(
                 [
-                    ["single" for i in range(len(norm2))],
                     ["ensemble" for i in range(len(norm2))],
+                    ["single" for i in range(len(norm2))],
                 ]
             ),
         },
         "index",
     ).T
-    print(df)
     sns.histplot(df, x="x", hue="type", ax=axs[1], bins=100)
     axs[1].set_xticks([])
     axs[1].set_yticks([])
@@ -60,8 +59,8 @@ def main():
     for n, ax in enumerate(axs.flat):
         ax
         ax.text(
-            -0.15,
-            1.015,
+            -0.08,  # horizontal
+            1.015,  # vertical
             "(" + string.ascii_lowercase[n] + ")",
             transform=ax.transAxes,  #
             size=fontsize,
