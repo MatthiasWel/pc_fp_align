@@ -71,7 +71,7 @@ def plot(df):
         comparision,
         y=f"delta_{metric}_abs",
         x="full_alignment_pc_fp_x",
-        hue=f"{metric}_y",
+        hue=f"train_set_size_y",
         ax=axs[0],
     )
     axs[0].legend(title=r"MCC$_\text{FP}$")
@@ -107,8 +107,7 @@ def plot(df):
 
     original = []
     threshold = 0.05
-    x = x[y != 0]
-    y = y[y != 0]
+
     for x_percent in np.arange(0, 1, 0.01):
         for y_percent in np.arange(0, 1, 0.01):
             x_thresh, y_thresh, pvalue = test_at_thresholds(x, y, x_percent, y_percent)
@@ -177,4 +176,6 @@ if __name__ == "__main__":
             ),  # toxcast / herg
         ]
     ).reset_index(drop=True)
+    # filtered  = df[(df.train_set_size > 100) & df.feature_type.isin(['PC', 'FP']) & (df.accuracy > 0.7)]
+    # df = filtered[filtered.dataset.duplicated(keep=False)]
     plot(df)

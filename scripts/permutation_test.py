@@ -37,9 +37,6 @@ def run_permutation_test(df):
     x = comparision["full_alignment_pc_fp_x"].values
     y = comparision[f"delta_{metric}_abs"].values
 
-    x = x[y != 0]
-    y = y[y != 0]
-
     original = []
     threshold = 0.05
     n_simulations = 10000
@@ -79,7 +76,7 @@ def run_permutation_test(df):
             [np.sum(cluster_sim == i) for i in range(1, n_clusters_sim + 1)]
         )
         simuation_result.append(max(cluster_sizes_sim))
-
+    print(max_cluster)
     print((np.sum(max_cluster > simuation_result) + 1) / (n_simulations + 1))
 
 
@@ -87,20 +84,11 @@ if __name__ == "__main__":
     df = pd.concat(
         [
             pd.read_csv(
-                "/data/shared/exchange/mwelsch/fp_pc_align/results/performance_2025-04-22_15:25:54.csv"
-            ),  # adme
+                "/data/shared/exchange/mwelsch/fp_pc_align/results/performance_2025-05-12_15:00:13.csv"
+            ),  # adme / hts / tox / tox21
             pd.read_csv(
-                "/data/shared/exchange/mwelsch/fp_pc_align/results/performance_2025-04-23_10:56:29.csv"
-            ),  # hts
-            pd.read_csv(
-                "/data/shared/exchange/mwelsch/fp_pc_align/results/performance_2025-04-23_11:49:40.csv"
-            ),  # tox
-            pd.read_csv(
-                "/data/shared/exchange/mwelsch/fp_pc_align/results/performance_2025-04-23_15:24:44.csv"
-            ),  # tox21
-            pd.read_csv(
-                "/data/shared/exchange/mwelsch/fp_pc_align/results/performance_2025-04-25_12:01:46.csv"
-            ),  # toxcast
+                "/data/shared/exchange/mwelsch/fp_pc_align/results/performance_2025-05-12_17:25:45.csv"
+            ),  # toxcast / herg
         ]
     ).reset_index(drop=True)
     run_permutation_test(df)
