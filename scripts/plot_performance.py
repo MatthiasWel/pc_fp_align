@@ -1,11 +1,12 @@
 import string
+from itertools import combinations
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from scipy.stats import linregress
+from scipy.stats import linregress, ttest_ind
 
 
 def get_ticks(data_min, data_max, n_spaces):
@@ -14,16 +15,17 @@ def get_ticks(data_min, data_max, n_spaces):
 
 
 def get_all_ticks(x, y, n_spaces):
+    x_min, x_max, delta_x, x_ticks = get_ticks_one(x, n_spaces)
+    y_min, y_max, delta_y, y_ticks = get_ticks_one(y, n_spaces)
+    return x_ticks, y_ticks, x_min, x_max, y_min, y_max, delta_x, delta_y
+
+
+def get_ticks_one(x, n_spaces):
     x_min = np.min(x)
     x_max = np.max(x)
     delta_x = x_max - x_min
     x_ticks = get_ticks(x_min, x_max, n_spaces)
-
-    y_min = np.min(y)
-    y_max = np.max(y)
-    delta_y = y_max - y_min
-    y_ticks = get_ticks(y_min, y_max, n_spaces)
-    return x_ticks, y_ticks, x_min, x_max, y_min, y_max, delta_x, delta_y
+    return x_min, x_max, delta_x, x_ticks
 
 
 def histogram_overlap_continuous(data1, data2, bins=100, range=None):
@@ -38,6 +40,14 @@ def symmetric_histogram_overlap_continuous(data1, data2, bins=100, range=None):
     overlap_2_to_1 = histogram_overlap_continuous(data2, data1, bins=bins, range=None)
 
     return (overlap_1_to_2 + overlap_2_to_1) / 2
+
+
+def cohen_d(d1, d2):
+    n1, n2 = len(d1), len(d2)
+    s1, s2 = np.var(d1, ddof=1), np.var(d2, ddof=1)
+    s = np.sqrt(((n1 - 1) * s1 + (n2 - 1) * s2) / (n1 + n2 - 2))
+    u1, u2 = np.mean(d1), np.mean(d2)
+    return (u1 - u2) / s
 
 
 def plot(df):
@@ -120,7 +130,15 @@ def plot(df):
     axs[0].xaxis.set_major_formatter(formatter)
     axs[0].yaxis.set_major_formatter(formatter)
 
-    axs[0].legend()
+    handles, labels = axs[0].get_legend_handles_labels()
+    labels = [
+        r"MCC$_\text{PC}$",
+        r"MCC$_\text{FP}$",
+        r"MCC$_\text{PCFP}$",
+        r"MCC$_\text{MEAN}$",
+        r"MCC$_\text{MAX}$",
+    ]
+    axs[0].legend(handles, labels)
 
     # plot 2
 
@@ -159,24 +177,44 @@ def plot(df):
             "std_err",
         ),
     )
-    methods = res_boot.col.unique()
-    heat = np.zeros((len(methods), len(methods)))
-    for i, m1 in enumerate(methods):
-        for j, m2 in enumerate(methods):
-            heat[i, j] = symmetric_histogram_overlap_continuous(
-                res_boot[res_boot.col == m1].slope,
-                res_boot[res_boot.col == m2].slope,
-            )
-    ticklabels = [r"PC", r"FP", r"PCFP", r"MEAN", r"MAX"]
-    sns.heatmap(
-        heat,
-        xticklabels=ticklabels,
-        yticklabels=ticklabels,
-        ax=axs[1],
-        square=True,
-        vmin=0,
-        vmax=1,
+    res_boot["type"] = res_boot.col.apply(
+        lambda x: "single" if x in ["mcc_PC", "mcc_FP"] else "ensemble"
     )
+
+    df = res_boot.rename({"type": "x", "slope": "y"}, axis=1)
+    sns.boxplot(data=df, x="x", y="y", ax=axs[1], color="skyblue")
+    categories = df["x"].unique()
+    pairs = list(combinations(categories, 2))
+
+    y_range = df["y"].max() - df["y"].min()
+    h = 0.05 * y_range
+    offset = df["y"].min()
+    print(pairs)
+    for i, (g1, g2) in enumerate(pairs):
+        y1 = df[df["x"] == g1]["y"]
+        y2 = df[df["x"] == g2]["y"]
+        print(cohen_d(y1, y2))
+        stat, pval = ttest_ind(y1, y2)
+
+        x1, x2 = list(categories).index(g1), list(categories).index(g2)
+        y = offset + i * h * 3
+
+        axs[1].plot([x1, x1, x2, x2], [y, y - h / 2, y - h / 2, y], c="k", lw=1.5)
+        axs[1].text((x1 + x2) / 2, y, f"p={pval:.2e}", ha="center", va="bottom")
+
+    y_min, y_max, delta_y, y_ticks = get_ticks_one(x=df.y, n_spaces=n_spaces)
+    axs[1].set_yticks(y_ticks)
+    axs[1].set_yticklabels(y_ticks, fontsize=fontsize_small)
+    axs[1].set_ylim(
+        y_min - offset_scale * delta_y / n_spaces,
+        y_max + offset_scale * delta_y / n_spaces,
+    )
+
+    axs[1].set_xlabel("", fontsize=fontsize)
+    axs[1].set_ylabel(r"Slope", fontsize=fontsize)
+    axs[1].yaxis.set_major_formatter(formatter)
+    axs[1].set_xticks(axs[1].get_xticks())
+    axs[1].set_xticklabels(["single", "ensemble"], fontsize=fontsize)
 
     # general stuff
     for n, ax in enumerate(axs.flat):
@@ -192,6 +230,34 @@ def plot(df):
 
     plt.tight_layout()
     plt.savefig("performance_and_alignment.pdf")
+    plt.show()
+
+    # heatmap
+    fig, axs = plt.subplots(
+        1,
+        1,
+        figsize=(12, 5),
+    )
+    methods = res_boot.col.unique()
+    heat = np.zeros((len(methods), len(methods)))
+    for i, m1 in enumerate(methods):
+        for j, m2 in enumerate(methods):
+            heat[i, j] = symmetric_histogram_overlap_continuous(
+                res_boot[res_boot.col == m1].slope,
+                res_boot[res_boot.col == m2].slope,
+            )
+    ticklabels = [r"PC", r"FP", r"PCFP", r"MEAN", r"MAX"]
+    sns.heatmap(
+        heat,
+        xticklabels=ticklabels,
+        yticklabels=ticklabels,
+        ax=axs,
+        square=True,
+        vmin=0,
+        vmax=1,
+    )
+    plt.tight_layout()
+    plt.savefig("heatmap.pdf")
     plt.show()
 
 
