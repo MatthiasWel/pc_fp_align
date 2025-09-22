@@ -38,7 +38,7 @@ def test_at_thresholds(x, y, x_percent, y_percent):
 
 def plot(df):
     metric = "mcc"
-    fontsize = 18
+    fontsize = 20
     fontsize_small = fontsize - 10
     n_spaces = 4
     offset_scale = 0.2
@@ -71,7 +71,7 @@ def plot(df):
         comparision,
         y=f"delta_{metric}_abs",
         x="full_alignment_pc_fp_x",
-        hue=f"train_set_size_y",
+        hue=f"{metric}_y",
         ax=axs[0],
     )
     axs[0].legend(title=r"MCC$_\text{FP}$")
@@ -81,6 +81,13 @@ def plot(df):
         comparision[f"delta_{metric}_abs"].values,
         n_spaces,
     )
+    x_ticks = [0, 0.1, 0.2, 0.3, 0.4, 0.5]
+    x_min = min(x_ticks)
+    x_max = max(x_ticks)
+
+    y_ticks = [0, 0.3, 0.6, 0.9, 1.2]
+    y_min = min(y_ticks)
+    y_max = max(y_ticks)
 
     axs[0].set_xticks(x_ticks)
     axs[0].set_yticks(y_ticks)
@@ -122,26 +129,33 @@ def plot(df):
     print(max(cluster_sizes))
 
     x_ticks, y_ticks, x_min, x_max, y_min, y_max, delta_x, delta_y = get_all_ticks(
-        np.arange(0, 1, 0.01) * 100, np.arange(0, 1, 0.01) * 100, n_spaces
+        np.arange(0, 1.01, 0.01) * 100, np.arange(0, 1.01, 0.01) * 100, n_spaces
     )
     x_ticks = [np.ceil(tick) for tick in x_ticks]
     y_ticks = [np.ceil(tick) for tick in y_ticks]
+    print(x_ticks[:-1] + [x_ticks[-1] + 1])
     sns.heatmap(
         heatmap.T,
         ax=axs[1],
-        xticklabels=x_ticks,
-        yticklabels=y_ticks,
+        xticklabels=x_ticks[:-1] + [x_ticks[-1] + 1],
+        yticklabels=y_ticks[:-1] + [y_ticks[-1] + 1],
         square=True,
         cbar=True,
         vmin=0,
         vmax=1,
+        cbar_kws={"label": "p-values"},
     )
+    cbar = axs[1].collections[0].colorbar
+    cbar.ax.yaxis.label.set_fontsize(fontsize - 5)
+
     axs[1].invert_yaxis()
 
     axs[1].set_xticks(x_ticks)
     axs[1].set_yticks(y_ticks)
-    axs[1].set_xticklabels(x_ticks, fontsize=fontsize_small)
-    axs[1].set_yticklabels(y_ticks, fontsize=fontsize_small)
+    axs[1].set_xticklabels(x_ticks[:-1] + [x_ticks[-1] + 1], fontsize=fontsize_small)
+    axs[1].set_yticklabels(y_ticks[:-1] + [y_ticks[-1] + 1], fontsize=fontsize_small)
+    # axs[1].set_xticklabels(x_ticks, fontsize=fontsize_small)
+    # axs[1].set_yticklabels(y_ticks, fontsize=fontsize_small)
 
     axs[1].set_xlabel(r"Quantile Align", fontsize=fontsize)
     axs[1].set_ylabel(r"Quantile MCC", fontsize=fontsize)
@@ -149,16 +163,25 @@ def plot(df):
     axs[1].xaxis.set_major_formatter(int_formatter)
     axs[1].yaxis.set_major_formatter(int_formatter)
 
-    for n, ax in enumerate(axs.flat):
-        ax
-        ax.text(
-            -0.15,
-            1.015,
-            "(" + string.ascii_lowercase[n] + ")",
-            transform=ax.transAxes,  #
-            size=fontsize,
-            weight="bold",
-        )
+    ax = axs[0]
+    ax.text(
+        -0.17,
+        1.015,
+        "(" + string.ascii_lowercase[0] + ")",
+        transform=ax.transAxes,  #
+        size=fontsize,
+        weight="bold",
+    )
+
+    ax = axs[1]
+    ax.text(
+        -0.20,
+        1.015,
+        "(" + string.ascii_lowercase[1] + ")",
+        transform=ax.transAxes,  #
+        size=fontsize,
+        weight="bold",
+    )
 
     plt.tight_layout()
     plt.savefig("performance_delta_alignment.pdf")

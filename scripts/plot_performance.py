@@ -52,7 +52,7 @@ def cohen_d(d1, d2):
 
 def plot(df):
     metric = "mcc"
-    fontsize = 18
+    fontsize = 20
     fontsize_small = fontsize - 10
     n_spaces = 4
     offset_scale = 0.2
@@ -193,14 +193,23 @@ def plot(df):
     for i, (g1, g2) in enumerate(pairs):
         y1 = df[df["x"] == g1]["y"]
         y2 = df[df["x"] == g2]["y"]
-        print(cohen_d(y1, y2))
+        cohen_d_val = cohen_d(y1, y2)
+        print(cohen_d_val)
+        print(g1, y1.mean(), y1.std())
+        print(g2, y2.mean(), y2.std())
         stat, pval = ttest_ind(y1, y2)
 
         x1, x2 = list(categories).index(g1), list(categories).index(g2)
         y = offset + i * h * 3
 
         axs[1].plot([x1, x1, x2, x2], [y, y - h / 2, y - h / 2, y], c="k", lw=1.5)
-        axs[1].text((x1 + x2) / 2, y, f"p={pval:.2e}", ha="center", va="bottom")
+        axs[1].text(
+            (x1 + x2) / 2,
+            y,
+            f"p={pval:.2e}, d={cohen_d_val:.2e}",
+            ha="center",
+            va="bottom",
+        )
 
     y_min, y_max, delta_y, y_ticks = get_ticks_one(x=df.y, n_spaces=n_spaces)
     axs[1].set_yticks(y_ticks)
@@ -236,7 +245,7 @@ def plot(df):
     fig, axs = plt.subplots(
         1,
         1,
-        figsize=(12, 5),
+        figsize=(10, 8),
     )
     methods = res_boot.col.unique()
     heat = np.zeros((len(methods), len(methods)))
@@ -248,14 +257,19 @@ def plot(df):
             )
     ticklabels = [r"PC", r"FP", r"PCFP", r"MEAN", r"MAX"]
     sns.heatmap(
-        heat,
+        heat * 100,
         xticklabels=ticklabels,
         yticklabels=ticklabels,
         ax=axs,
         square=True,
         vmin=0,
-        vmax=1,
+        vmax=100,
+        cbar_kws={"label": "[%]"},
     )
+    axs.set_xticklabels(axs.get_xmajorticklabels(), fontsize=fontsize)
+    axs.set_yticklabels(axs.get_ymajorticklabels(), fontsize=fontsize)
+    cbar = axs.collections[0].colorbar
+    cbar.ax.yaxis.label.set_fontsize(fontsize - 5)
     plt.tight_layout()
     plt.savefig("heatmap.pdf")
     plt.show()
