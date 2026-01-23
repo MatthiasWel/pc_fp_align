@@ -1,7 +1,9 @@
 import pandas as pd
 import tdc.single_pred
 from tdc.utils import retrieve_label_name_list
-
+import sys
+from contextlib import contextmanager
+from pathlib import Path
 
 def tdc_adme(dataset_path, sample_size):
     adme = [
@@ -130,40 +132,54 @@ def tdc_herg_central(dataset_path, sample_size):
     )
     return all_tox
 
+@contextmanager
+def redirect_stdout_stderr_to_file(logfile_path):
+    with open(logfile_path, "w") as f:
+        old_stdout, old_stderr = sys.stdout, sys.stderr
+        sys.stdout, sys.stderr = f, f
+        try:
+            yield
+        finally:
+            sys.stdout, sys.stderr = old_stdout, old_stderr
+
 
 def tdc_tasks(
-    dataset_path,
-    sample_size,
+    dataset_path: Path,
+    sample_size: int,
+    log_path: Path,
+    time: str, 
     include=("adme", "hts", "tox", "tox21", "tox_cast", "herg_central"),
 ):
-    dataset_collections = []
-    for i in include:
-        assert i in (
-            "adme",
-            "hts",
-            "tox",
-            "tox21",
-            "tox_cast",
-            "herg_central",
-        ), f"{i} is not an available dataset collection"
+    log_file = f'tdc_{time}.log'
+    with redirect_stdout_stderr_to_file(log_path / log_file):
+        dataset_collections = []
+        for i in include:
+            assert i in (
+                "adme",
+                "hts",
+                "tox",
+                "tox21",
+                "tox_cast",
+                "herg_central",
+            ), f"{i} is not an available dataset collection"
 
-    if "adme" in include:
-        adme = tdc_adme(dataset_path, sample_size)
-        dataset_collections.append(adme)
-    if "hts" in include:
-        hts = tdc_hts(dataset_path, sample_size)
-        dataset_collections.append(hts)
-    if "tox" in include:
-        tox = tdc_tox(dataset_path, sample_size)
-        dataset_collections.append(tox)
-    if "tox21" in include:
-        tox21 = tdc_tox21(dataset_path, sample_size)
-        dataset_collections.append(tox21)
-    if "tox_cast" in include:
-        tox_cast = tdc_toxcast(dataset_path, sample_size)
-        dataset_collections.append(tox_cast)
-    if "herg_central" in include:
-        herg_central = tdc_herg_central(dataset_path, sample_size)
-        dataset_collections.append(herg_central)
+        if "adme" in include:
+            adme = tdc_adme(dataset_path, sample_size)
+            dataset_collections.append(adme)
+        if "hts" in include:
+            hts = tdc_hts(dataset_path, sample_size)
+            dataset_collections.append(hts)
+        if "tox" in include:
+            tox = tdc_tox(dataset_path, sample_size)
+            dataset_collections.append(tox)
+        if "tox21" in include:
+            tox21 = tdc_tox21(dataset_path, sample_size)
+            dataset_collections.append(tox21)
+        if "tox_cast" in include:
+            tox_cast = tdc_toxcast(dataset_path, sample_size)
+            dataset_collections.append(tox_cast)
+        if "herg_central" in include:
+            herg_central = tdc_herg_central(dataset_path, sample_size)
+            dataset_collections.append(herg_central)
 
     return pd.concat(dataset_collections).reset_index(drop=True)

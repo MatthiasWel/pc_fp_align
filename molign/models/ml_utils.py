@@ -1,4 +1,5 @@
 import torch
+import logging
 from lightning import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger
@@ -14,6 +15,7 @@ def train(
     train,
     val,
     tensorboard_path,
+    logs_path,
     unwrap_data=lambda data: (data[0], data[1]),
     loss_fn=BCELoss(),
     learning_rate=1e-4,
@@ -22,6 +24,19 @@ def train(
 ):
     torch.multiprocessing.set_sharing_strategy("file_system")
     torch.set_float32_matmul_precision("medium")
+
+    
+    log_file = f"lightning_{time}.log"
+
+    logger = logging.getLogger("lightning.pytorch")
+    logger.setLevel(logging.DEBUG)  
+    logger.handlers = []
+    logger.propagate = False
+    file_handler = logging.FileHandler(logs_path / log_file)
+    file_handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
 
     lit_model = LitModel(
         model=model,
@@ -41,6 +56,7 @@ def train(
             )
         ],
         log_every_n_steps=1,
+        enable_progress_bar=False,
         logger=TensorBoardLogger(
             save_dir=tensorboard_path, name=time, version=model_name
         ),
