@@ -19,7 +19,7 @@ class LitModel(LightningModule):
         **kwargs,
     ):
         super(LitModel, self).__init__()
-        self.save_hyperparameters(ignore=["model"])
+        self.save_hyperparameters(ignore=["model", "loss_function", "unwrap_data"])
 
         # optimizer params
         self.lr = lr
