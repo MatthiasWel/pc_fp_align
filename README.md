@@ -1,4 +1,4 @@
-# Exclusion Zone in Alignment-Performance Space for Featurization Strategies
+# Relating Model Performance to Embedding Distributions in Molecular Machine Learning
 
 # Installation
 
